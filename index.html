@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logística ERS - OCR Scanner</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon-wrapper">
+                        <i class="fa-solid fa-motorcycle"></i>
+                        <span class="speed-lines"></span>
+                    </div>
+                    <h1>Flash Expres <span>| OCR Extractor</span></h1>
+                </div>
+                <div class="header-actions">
+                    <button id="theme-toggle" class="icon-btn" title="Alternar Tema">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                    <button class="primary-btn" id="open-settings-btn"><i class="fa-solid fa-gear"></i> Configuración</button>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- Settings / Form before upload (for DRIVER and CLIENTE) -->
+            <section class="setup-section panel">
+                <h2>Parámetros de Operación</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="driver-select">
+                            Driver Asignado 
+                            <button class="add-btn" id="add-driver-btn" title="Nuevo Driver"><i class="fa-solid fa-plus"></i></button>
+                            <button class="add-btn delete-item-btn" id="delete-driver-btn" title="Eliminar Driver Seleccionado" style="background-color: var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                        </label>
+                        <select id="driver-select">
+                            <option value="">Seleccione un Driver...</option>
+                            <option value="MATIAS BRAVO">MATIAS BRAVO</option>
+                            <option value="ANGEL DIAZ">ANGEL DIAZ</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="client-select">
+                            Cliente (Remitente) 
+                            <button class="add-btn" id="add-client-btn" title="Nuevo Cliente"><i class="fa-solid fa-plus"></i></button>
+                            <button class="add-btn delete-item-btn" id="delete-client-btn" title="Eliminar Cliente Seleccionado" style="background-color: var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                        </label>
+                        <select id="client-select">
+                            <option value="">Seleccione un Cliente...</option>
+                            <option value="DIAZ MATIAS JAVIER">DIAZ MATIAS JAVIER</option>
+                            <option value="KURANDA SAS">KURANDA SAS</option>
+                            <option value="TUS TECNOLOGIAS">TUS TECNOLOGIAS</option>
+                            <option value="CUANDO TE ENAMORAS">CUANDO TE ENAMORAS</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="date-input">Fecha (Por defecto día anterior)</label>
+                        <input type="date" id="date-input">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Drag & Drop Zone / Text Input -->
+            <section class="upload-section">
+                <div class="interaction-zone">
+                    <div class="drop-zone compact" id="drop-zone">
+                        <div class="drop-zone-content">
+                            <div class="upload-icon">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                            </div>
+                            <h3>Imágenes / Excel</h3>
+                            <input type="file" id="file-input" multiple accept="image/*, .xlsx, .xls" class="hidden">
+                            <button class="secondary-btn btn-sm" onclick="document.getElementById('file-input').click()">Explorar</button>
+                        </div>
+                        <div class="upload-preview" id="upload-preview" style="display: none;">
+                            <!-- Previews will appear here -->
+                        </div>
+                    </div>
+                    <div class="text-zone">
+                        <textarea id="raw-text-input" placeholder="O pega el texto del pedido aquí..."></textarea>
+                    </div>
+            </section>
+
+            <!-- Data Table Section -->
+            <section class="data-section panel">
+                <div class="section-header">
+                    <h2>Datos Extraídos</h2>
+                    <div class="table-actions">
+                        <button class="primary-btn" id="process-btn"><i class="fa-solid fa-file-import"></i> Cargar Datos</button>
+                        <button class="secondary-btn" id="export-btn"><i class="fa-solid fa-file-excel"></i> Exportar a Excel</button>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table id="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nro</th>
+                                <th>ID</th>
+                                <th>FECHA</th>
+                                <th>DRIVER</th>
+                                <th>CLIENTE</th>
+                                <th>DOMICILIO ORIGEN</th>
+                                <th>LOCALIDAD ORIGEN</th>
+                                <th>CP ORIGEN</th>
+                                <th>DESTINATARIO</th>
+                                <th>DOMICILIO DESTINO</th>
+                                <th>LOCALIDAD DESTINO</th>
+                                <th>CP DESTINO</th>
+                                <th>TELEFONO</th>
+                                <th>VALOR DECLARADO</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- Empty state initially -->
+                            <tr class="empty-row" id="empty-state">
+                                <td colspan="15">
+                                    <div class="empty-state-content">
+                                        <i class="fa-solid fa-inbox"></i>
+                                        <p>Aún no hay datos extraídos. Sube archivos para comenzar.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Debug Panel -->
+            <section class="panel" id="debug-section" style="display:none;">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-bug"></i> Debug: Texto OCR Crudo</h2>
+                    <button class="secondary-btn" id="toggle-debug">Ocultar</button>
+                </div>
+                <pre id="debug-output" style="background:var(--bg-main);padding:1rem;border-radius:0.5rem;font-size:0.8rem;overflow-x:auto;white-space:pre-wrap;max-height:300px;overflow-y:auto;"></pre>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-gear"></i> Configuración Global</h2>
+                <button class="close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="api-key-input">Gemini API Key <a href="https://aistudio.google.com/apikey" target="_blank">(Obtener gratis)</a></label>
+                    <input type="password" id="api-key-input" placeholder="Pega tu API Key..." style="font-family:monospace;">
+                    <small class="hint">Requerida para extraer datos automáticamente de imágenes usando IA.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="primary-btn" id="save-settings-btn">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Driver Modal -->
+    <div id="driver-modal" class="modal-overlay hidden">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2>Agregar Driver</h2>
+                <button class="close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="new-driver-name">Nombre del Driver</label>
+                    <input type="text" id="new-driver-name" placeholder="Ej. JUAN PEREZ">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="secondary-btn close-modal-btn">Cancelar</button>
+                <button class="primary-btn" id="save-driver-btn">Agregar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Client Modal -->
+    <div id="client-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Agregar Cliente (Remitente)</h2>
+                <button class="close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="new-client-name">Nombre del Cliente</label>
+                    <input type="text" id="new-client-name" placeholder="Ej. EMPRESA SA">
+                </div>
+                <div class="form-group">
+                    <label for="new-client-domicilio">Domicilio Origen</label>
+                    <input type="text" id="new-client-domicilio" placeholder="Ej. CALLE 123">
+                </div>
+                <div class="form-group">
+                    <label for="new-client-localidad">Localidad Origen</label>
+                    <input type="text" id="new-client-localidad" placeholder="Ej. SAN MIGUEL DE TUCUMAN">
+                </div>
+                <div class="form-group">
+                    <label for="new-client-cp">Código Postal Origen</label>
+                    <input type="text" id="new-client-cp" placeholder="Ej. 4000">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="secondary-btn close-modal-btn">Cancelar</button>
+                <button class="primary-btn" id="save-client-btn">Agregar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

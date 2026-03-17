@@ -1,0 +1,11 @@
+# Archivos de configuración del sistema
+.gemini/
+.agents/
+brain/
+*.log
+
+# Archivos temporales
+tmp/
+node_modules/
+.DS_Store
+Thumbs.db
