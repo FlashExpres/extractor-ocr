@@ -329,7 +329,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const doc = data.docs[0];
             selectedDriveFile = { id: doc.id, name: doc.name, mimeType: doc.mimeType };
             alert(`Archivo seleccionado: ${doc.name}. Ahora indica las filas en el cuadro de texto (ej: 6, 7).`);
-            if (!rawTextInput.value) rawTextInput.value = "FILAS: ";
+            if (!rawTextInput.value || !rawTextInput.value.toUpperCase().startsWith("FILAS:")) {
+                rawTextInput.value = "FILAS: " + rawTextInput.value;
+            }
+            updatePreview();
             rawTextInput.focus();
         }
     };
@@ -344,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updatePreview = () => {
         const dropZoneContent = document.querySelector('.drop-zone-content');
-        if (currentFiles.length) {
+        if (currentFiles.length || selectedDriveFile) {
             uploadPreview.style.display = 'grid';
             dropZoneContent.style.display = 'none';
         } else {
@@ -352,6 +355,8 @@ document.addEventListener('DOMContentLoaded', () => {
             dropZoneContent.style.display = 'block';
         }
         uploadPreview.innerHTML = '';
+        
+        // Local files
         currentFiles.forEach((file, i) => {
             const item = document.createElement('div');
             item.className = 'preview-item';
@@ -363,10 +368,27 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             uploadPreview.appendChild(item);
         });
+
+        // Drive file
+        if (selectedDriveFile) {
+            const item = document.createElement('div');
+            item.className = 'preview-item drive-preview';
+            item.innerHTML = `
+                <i class="fa-brands fa-google-drive" style="font-size:2rem;color:#4285F4"></i>
+                <span title="${selectedDriveFile.name}">${selectedDriveFile.name} (Drive)</span>
+                <button class="remove-file" onclick="event.stopPropagation(); window.removeDriveFile()"><i class="fa-solid fa-xmark"></i></button>
+            `;
+            uploadPreview.appendChild(item);
+        }
     };
 
     window.removeFile = (i) => {
         currentFiles.splice(i, 1);
+        updatePreview();
+    };
+
+    window.removeDriveFile = () => {
+        selectedDriveFile = null;
         updatePreview();
     };
 
@@ -424,12 +446,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const clientData = clients.find(c => c.name === clientName);
         const dateStr = dateInput.value.split('-').reverse().join('/');
 
+        let driveProcessed = false; // Flag to prevent manual entry if Drive was used
+
         // Advanced Text Override Logic
         // Support common formats and the specific delivery format
         const cleanID = (id) => id.replace(/^#[A-Z0-9]/i, '').replace(/^#/i, '').trim().toUpperCase();
 
         const textBlocks = rawText.split(/(?=\nNúmero de pedido:|\nID:|\nPEDIDO:)/i)
-            .filter(b => b.trim().length > 0)
+            .filter(b => b.trim().length > 0 && !b.trim().toUpperCase().startsWith("FILAS:"))
             .map(b => b.trim());
 
         const parsedOverrides = textBlocks.map(block => {
@@ -513,10 +537,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert("Por favor indica los números de fila en el texto.");
                 } else {
                     await parseExcelFromDrive(buffer, rowNums, dateStr, driver, clientName, clientData);
+                    driveProcessed = true; // Set flag if Drive processing was successful
                 }
                 
                 selectedDriveFile = null; // Clear after processing
-                rawTextInput.value = "";
+                rawTextInput.value = ""; // Clear raw text after Drive processing
             } catch (e) {
                 alert("Error procesando Drive: " + e.message);
             }
@@ -525,7 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. Process Manual Entry (if text blocks exist and NO images AND NO Drive active)
         const hasImages = currentFiles.some(f => f.type.startsWith('image/'));
         
-        if (rawText && !hasImages && !selectedDriveFile) {
+        if (rawText && !hasImages && !selectedDriveFile && !driveProcessed) {
             parsedOverrides.forEach(ov => {
                 addTableRow({
                     id: ov.id || "TEXTO",
