@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Google Drive Configuration ---
-    const CLIENT_ID = 'REEMPLAZAR_CON_TU_CLIENT_ID'; 
-    const API_KEY = 'REEMPLAZAR_CON_TU_API_KEY';
+    let CLIENT_ID = localStorage.getItem('google_client_id') || ""; 
+    let API_KEY = localStorage.getItem('google_api_key') || "";
     const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
     const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly';
 
@@ -76,8 +76,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const day = String(d.getDate()).padStart(2, '0');
         dateInput.value = `${y}-${m}-${day}`;
 
-        // API Key
+        // API Keys
         apiKeyInput.value = localStorage.getItem('gemini_api_key') || "";
+        document.getElementById('google-client-id').value = localStorage.getItem('google_client_id') || "";
+        document.getElementById('google-api-key').value = localStorage.getItem('google_api_key') || "";
 
         // Populate Selects
         renderDriverOptions();
@@ -142,7 +144,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Save Settings
     document.getElementById('save-settings-btn').onclick = () => {
         localStorage.setItem('gemini_api_key', apiKeyInput.value.trim());
+        localStorage.setItem('google_client_id', document.getElementById('google-client-id').value.trim());
+        localStorage.setItem('google_api_key', document.getElementById('google-api-key').value.trim());
+        
+        // Update local variables and re-init Drive
+        CLIENT_ID = localStorage.getItem('google_client_id');
+        API_KEY = localStorage.getItem('google_api_key');
+        if (CLIENT_ID && API_KEY) initDrive();
+
         hideModals();
+        alert("Configuración guardada. Recarga la página si el botón de Drive aún no funciona.");
     };
 
     // Delete Driver
@@ -245,6 +256,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Google Drive Integration logic ---
     const initDrive = () => {
+        if (!CLIENT_ID || !API_KEY) return; // Don't init without keys
+
         const script = document.createElement('script');
         script.src = "https://apis.google.com/js/api.js";
         script.onload = () => {

@@ -160,7 +160,18 @@
                 <div class="form-group">
                     <label for="api-key-input">Gemini API Key <a href="https://aistudio.google.com/apikey" target="_blank">(Obtener gratis)</a></label>
                     <input type="password" id="api-key-input" placeholder="Pega tu API Key..." style="font-family:monospace;">
-                    <small class="hint">Requerida para extraer datos automáticamente de imágenes usando IA.</small>
+                    <small class="hint">Requerida para extraer datos de imágenes.</small>
+                </div>
+                <hr style="margin: 1.5rem 0; border-color: var(--border-color); opacity: 0.3;">
+                <h3 style="margin-bottom: 1rem; font-size: 1rem;">Google Drive (Opcional)</h3>
+                <div class="form-group">
+                    <label for="google-client-id">Google Client ID</label>
+                    <input type="password" id="google-client-id" placeholder="Pega tu Client ID..." style="font-family:monospace;">
+                </div>
+                <div class="form-group">
+                    <label for="google-api-key">Google API Key (Drive)</label>
+                    <input type="password" id="google-api-key" placeholder="Pega tu API Key de Google..." style="font-family:monospace;">
+                    <small class="hint">Necesarios para cargar archivos desde Google Drive.</small>
                 </div>
             </div>
             <div class="modal-footer">
