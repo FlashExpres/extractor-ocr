@@ -65,8 +65,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initial Setup ---
     const init = () => {
         // Theme
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
-        setTheme(prefersDark.matches ? 'dark' : 'light');
+        const savedTheme = localStorage.getItem('ers_theme');
+        if (savedTheme) {
+            setTheme(savedTheme);
+        } else {
+            const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+            setTheme(prefersDark.matches ? 'dark' : 'light');
+        }
 
         // Date (Yesterday)
         const d = new Date();
@@ -91,9 +96,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const setTheme = (theme) => {
         document.body.setAttribute('data-theme', theme);
+        localStorage.setItem('ers_theme', theme);
         const icon = themeToggle.querySelector('i');
-        icon.className = theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        if (icon) {
+            icon.className = theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        }
     };
+
+    themeToggle.addEventListener('click', () => {
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        setTheme(isDark ? 'light' : 'dark');
+    });
 
     const renderDriverOptions = () => {
         const val = driverSelect.value;

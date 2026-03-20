@@ -20,9 +20,6 @@
                     <h1>Flash Expres <span>| OCR Extractor</span></h1>
                 </div>
                 <div class="header-actions">
-                    <button id="theme-toggle" class="icon-btn" title="Alternar Tema">
-                        <i class="fa-solid fa-moon"></i>
-                    </button>
                     <button class="primary-btn" id="open-settings-btn"><i class="fa-solid fa-gear"></i> Configuración</button>
                 </div>
             </div>
@@ -157,6 +154,12 @@
                 <button class="close-modal"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="modal-body">
+                <div class="form-group" style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <span style="font-weight: 600;"><i class="fa-solid fa-circle-half-stroke"></i> Apariencia del Sistema</span>
+                    <button id="theme-toggle" class="icon-btn" title="Alternar Tema" style="background: var(--accent); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                </div>
                 <div class="form-group">
                     <label for="api-key-input">Gemini API Key <a href="https://aistudio.google.com/apikey" target="_blank">(Obtener gratis)</a></label>
                     <input type="password" id="api-key-input" placeholder="Pega tu API Key..." style="font-family:monospace;">
