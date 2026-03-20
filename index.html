@@ -20,9 +20,6 @@
                     <h1>Flash Expres <span>| OCR Extractor</span></h1>
                 </div>
                 <div class="header-actions">
-                    <button id="drive-btn" class="icon-btn" title="Cargar desde Google Drive">
-                        <i class="fa-brands fa-google-drive"></i> Drive
-                    </button>
                     <button class="primary-btn" id="open-settings-btn"><i class="fa-solid fa-gear"></i> Configuración</button>
                 </div>
             </div>
@@ -77,7 +74,7 @@
                             <h3>Imágenes / Excel</h3>
                             <input type="file" id="file-input" multiple accept="image/*, .xlsx, .xls" class="hidden">
                             <button class="secondary-btn btn-sm" onclick="document.getElementById('file-input').click()">Explorar</button>
-                            <button class="secondary-btn btn-sm" id="drive-btn" style="background-color: var(--secondary);"><i class="fa-brands fa-google-drive"></i> Cargar desde Drive</button>
+                            <button class="secondary-btn btn-sm" id="drive-btn" title="Cargar desde Google Drive"><i class="fa-brands fa-google-drive"></i> Drive</button>
                         </div>
                         <div class="upload-preview" id="upload-preview" style="display: none;">
                             <!-- Previews will appear here -->
