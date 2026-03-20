@@ -17,6 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const tucumanMapping = {
         "YERBA BUENA": "4107",
         "SAN MIGUEL DE TUCUMAN": "4000",
+        "SAN MIGUEL DE TUCUMÁN": "4000",
+        "S.M. DE TUCUMAN": "4000",
+        "S.M. DE TUCUMÁN": "4000",
+        "TUCUMAN": "4000",
+        "TUCUMÁN": "4000",
         "SAN MIGUEL": "4000",
         "LA BANDA DEL RIO SALI": "4109",
         "CEVIL REDONDO": "4107",
@@ -450,9 +455,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Advanced Text Override Logic
         // Support common formats and the specific delivery format
-        const cleanID = (id) => id.replace(/^#[A-Z0-9]/i, '').replace(/^#/i, '').trim().toUpperCase();
+        const cleanID = (id) => id.replace(/^#/i, '').trim().toUpperCase();
 
-        const textBlocks = rawText.split(/(?=\nNúmero de pedido:|\nID:|\nPEDIDO:)/i)
+        const textBlocks = rawText.split(/\n?(?=Número de pedido:|ID:|PEDIDO:)/i)
             .filter(b => b.trim().length > 0 && !b.trim().toUpperCase().startsWith("FILAS:"))
             .map(b => b.trim());
 
@@ -461,8 +466,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const keywords = {
                 id: [/id[:\s]+([A-Z0-9#]+)/i, /pedido[:\s]+([A-Z0-9#]+)/i, /Número de pedido: ([A-Z0-9#]+)/i],
                 destinatario: [/destinatario[:\s]+([^,\n(\[]+)/i, /nombre[:\s]+([^,\n(\[]+)/i, /Datos del cliente: ([^,\n(\[]+)/i],
-                domDestino: [/domicilio destino[:\s]+([^,\n]+)/i, /domicilio[:\s]+([^,\n]+)/i, /direccion[:\s]+([^,\n]+)/i, /Dirección de entrega: ([^,\n]+)/i],
-                locDestino: [/localidad destino[:\s]+([^,\n\r]+)/i, /localidad[:\s]+([^,\n\r]+)/i, /ciudad[:\s]+([^,\n\r]+)/i],
+                domDestino: [/domicilio destino[:\s]+([^\n]+)/i, /domicilio[:\s]+([^\n]+)/i, /direccion[:\s]+([^\n]+)/i, /Dirección de entrega: ([^\n]+)/i],
+                locDestino: [/localidad destino[:\s]+([^\n\r]+)/i, /localidad[:\s]+([^\n\r]+)/i, /ciudad[:\s]+([^\n\r]+)/i],
                 cpDestino: [/cp destino[:\s]+(\d+)/i, /cp[:\s]+(\d+)/i, /codigo postal[:\s]+(\d+)/i],
                 telefono: [/telefono[:\s]+([\d\-\s\(\)]+)/i, /tel[:\s]+([\d\-\s\(\)]+)/i, /\((\d+)\)/],
                 valorDeclarado: [/valor[:\s]+(\d+)/i, /declarado[:\s]+(\d+)/i]
