@@ -1,4 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Google Drive Configuration ---
+    const CLIENT_ID = 'REEMPLAZAR_CON_TU_CLIENT_ID'; 
+    const API_KEY = 'REEMPLAZAR_CON_TU_API_KEY';
+    const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
+    const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly';
+
+    let tokenClient;
+    let gapiInited = false;
+    let gisInited = false;
+    let selectedDriveFile = null;
+
     // --- State & Constants ---
     let currentFiles = [];
     let dbCounter = 1;
@@ -15,6 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getCP = (loc) => tucumanMapping[loc.toUpperCase()] || "";
     const getLoc = (cp) => Object.keys(tucumanMapping).find(k => tucumanMapping[k] === cp) || "";
+    const cleanPhone = (tel) => {
+        let t = tel.replace(/[^\d]/g, '');
+        if (t.startsWith('5')) t = t.substring(1);
+        return t;
+    };
     
     // Default Drivers & Clients (initial state)
     let drivers = JSON.parse(localStorage.getItem('ers_drivers')) || ["MATIAS BRAVO", "ANGEL DIAZ"];
@@ -66,6 +82,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Populate Selects
         renderDriverOptions();
         renderClientOptions();
+        
+        // Google Drive
+        initDrive();
     };
 
     const setTheme = (theme) => {
@@ -200,6 +219,95 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const parseExcelFromDrive = async (arrayBuffer, rowNums, dateStr, driver, clientName, clientData) => {
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+        rowNums.forEach(num => {
+            const row = data[num - 1]; // 1-indexed to 0-indexed
+            if (!row || row.length < 2) return;
+
+            addTableRow({
+                id: String(row[1] || "").toUpperCase(), // B is index 1
+                fecha: dateStr, driver, cliente: clientName,
+                domOrigen: clientData.dom, locOrigen: clientData.loc, cpOrigen: clientData.cp,
+                destinatario: String(row[5] || "").toUpperCase(), // F is index 5
+                domDestino: String(row[6] || "").toUpperCase(), // G
+                locDestino: String(row[7] || "").toUpperCase(), // H
+                cpDestino: String(row[8] || getCP(String(row[7] || ""))), // I
+                telefono: cleanPhone(String(row[9] || "")), // J
+                valorDeclarado: String(row[10] || "0") // K
+            });
+        });
+    };
+
+    // --- Google Drive Integration logic ---
+    const initDrive = () => {
+        const script = document.createElement('script');
+        script.src = "https://apis.google.com/js/api.js";
+        script.onload = () => {
+            gapi.load('client:picker', async () => {
+                await gapi.client.init({
+                    apiKey: API_KEY,
+                    discoveryDocs: DISCOVERY_DOCS,
+                });
+                gapiInited = true;
+            });
+        };
+        document.body.appendChild(script);
+
+        const gisScript = document.createElement('script');
+        gisScript.src = "https://accounts.google.com/gsi/client";
+        gisScript.onload = () => {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // defined later
+            });
+            gisInited = true;
+        };
+        document.body.appendChild(gisScript);
+    };
+
+    document.getElementById('drive-btn').onclick = () => {
+        if (!gapiInited || !gisInited) return alert("Google API no cargada.");
+        
+        tokenClient.callback = async (response) => {
+            if (response.error !== undefined) throw (response);
+            createPicker(response.access_token);
+        };
+
+        if (gapi.client.getToken() === null) {
+            tokenClient.requestAccessToken({prompt: 'consent'});
+        } else {
+            tokenClient.requestAccessToken({prompt: ''});
+        }
+    };
+
+    const createPicker = (accessToken) => {
+        const view = new google.picker.View(google.picker.ViewId.DOCS);
+        view.setMimeTypes("application/vnd.google-apps.spreadsheet,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        const picker = new google.picker.PickerBuilder()
+            .addView(view)
+            .setOAuthToken(accessToken)
+            .setDeveloperKey(API_KEY)
+            .setCallback(pickerCallback)
+            .build();
+        picker.setVisible(true);
+    };
+
+    const pickerCallback = (data) => {
+        if (data.action == google.picker.Action.PICKED) {
+            const doc = data.docs[0];
+            selectedDriveFile = { id: doc.id, name: doc.name, mimeType: doc.mimeType };
+            alert(`Archivo seleccionado: ${doc.name}. Ahora indica las filas en el cuadro de texto (ej: 6, 7).`);
+            if (!rawTextInput.value) rawTextInput.value = "FILAS: ";
+            rawTextInput.focus();
+        }
+    };
+
     // --- File Handling (Images/Excel) ---
     const handleFiles = (files) => {
         currentFiles = [...currentFiles, ...Array.from(files)];
@@ -291,16 +399,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const dateStr = dateInput.value.split('-').reverse().join('/');
 
         // Advanced Text Override Logic
-        const textBlocks = rawText.split(/\n+/).filter(b => b.trim().length > 0);
+        // Support common formats and the specific delivery format
+        const cleanID = (id) => id.replace(/^#[A-Z0-9]/i, '').replace(/^#/i, '').trim().toUpperCase();
+
+        const textBlocks = rawText.split(/(?=\nNúmero de pedido:|\nID:|\nPEDIDO:)/i)
+            .filter(b => b.trim().length > 0)
+            .map(b => b.trim());
+
         const parsedOverrides = textBlocks.map(block => {
             const overrides = {};
             const keywords = {
-                id: [/id[:\s]+([A-Z0-9]+)/i, /pedido[:\s]+([A-Z0-9]+)/i],
-                destinatario: [/destinatario[:\s]+([^,\n]+)/i, /nombre[:\s]+([^,\n]+)/i],
-                domDestino: [/domicilio destino[:\s]+([^,\n]+)/i, /domicilio[:\s]+([^,\n]+)/i, /direccion[:\s]+([^,\n]+)/i],
-                locDestino: [/localidad destino[:\s]+([^,\n]+)/i, /localidad[:\s]+([^,\n]+)/i, /ciudad[:\s]+([^,\n]+)/i],
+                id: [/id[:\s]+([A-Z0-9#]+)/i, /pedido[:\s]+([A-Z0-9#]+)/i, /Número de pedido: ([A-Z0-9#]+)/i],
+                destinatario: [/destinatario[:\s]+([^,\n(\[]+)/i, /nombre[:\s]+([^,\n(\[]+)/i, /Datos del cliente: ([^,\n(\[]+)/i],
+                domDestino: [/domicilio destino[:\s]+([^,\n]+)/i, /domicilio[:\s]+([^,\n]+)/i, /direccion[:\s]+([^,\n]+)/i, /Dirección de entrega: ([^,\n]+)/i],
+                locDestino: [/localidad destino[:\s]+([^,\n\r]+)/i, /localidad[:\s]+([^,\n\r]+)/i, /ciudad[:\s]+([^,\n\r]+)/i],
                 cpDestino: [/cp destino[:\s]+(\d+)/i, /cp[:\s]+(\d+)/i, /codigo postal[:\s]+(\d+)/i],
-                telefono: [/telefono[:\s]+([\d\-\s]+)/i, /tel[:\s]+([\d\-\s]+)/i],
+                telefono: [/telefono[:\s]+([\d\-\s\(\)]+)/i, /tel[:\s]+([\d\-\s\(\)]+)/i, /\((\d+)\)/],
                 valorDeclarado: [/valor[:\s]+(\d+)/i, /declarado[:\s]+(\d+)/i]
             };
 
@@ -309,9 +423,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const reg of regexes) {
                     const match = block.match(reg);
                     if (match) {
-                        overrides[key] = match[1].trim().toUpperCase();
+                        let val = match[1].trim();
+                        if (key === 'id') val = cleanID(val);
+                        if (key === 'telefono') val = cleanPhone(val);
+                        
+                        overrides[key] = val.toUpperCase();
                         usedText.push(match[0]);
                         
+                        // Smart Address Splitting: If it's a Dirección de entrega line with a comma
+                        if (key === 'domDestino' && match[0].includes('Dirección de entrega:')) {
+                            const fullAddr = match[1].split(',');
+                            if (fullAddr.length > 1) {
+                                overrides.domDestino = fullAddr[0].trim().toUpperCase();
+                                overrides.locDestino = fullAddr[1].trim().toUpperCase();
+                            }
+                        }
+
                         // Auto-fill CP/Locality if one is provided
                         if (key === 'locDestino' && !overrides.cpDestino) {
                             overrides.cpDestino = getCP(overrides.locDestino);
@@ -329,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let remaining = block;
                 usedText.forEach(t => remaining = remaining.replace(t, ''));
                 const idMatch = remaining.match(/\b([A-Z0-9]{3,})\b/i);
-                if (idMatch) overrides.id = idMatch[1].toUpperCase();
+                if (idMatch) overrides.id = cleanID(idMatch[1].toUpperCase());
             }
             
             return overrides;
@@ -337,8 +464,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let overrideIndex = 0;
 
-        // 1. Process Manual Entry (if text blocks exist but no images)
-        if (rawText && currentFiles.length === 0) {
+        // 0. Process Drive File if selected
+        if (selectedDriveFile) {
+            try {
+                const accessToken = gapi.client.getToken().access_token;
+                let url = `https://www.googleapis.com/drive/v3/files/${selectedDriveFile.id}?alt=media`;
+                
+                // If it's a Google Sheet, we MUST export it
+                if (selectedDriveFile.mimeType === 'application/vnd.google-apps.spreadsheet') {
+                    url = `https://www.googleapis.com/drive/v3/files/${selectedDriveFile.id}/export?mimeType=application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`;
+                }
+
+                const response = await fetch(url, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                });
+
+                if (!response.ok) throw new Error("Error al descargar de Drive");
+                const buffer = await response.arrayBuffer();
+                
+                const rowNums = rawText.match(/\d+/g)?.map(Number) || [];
+                if (rowNums.length === 0) {
+                    alert("Por favor indica los números de fila en el texto.");
+                } else {
+                    await parseExcelFromDrive(buffer, rowNums, dateStr, driver, clientName, clientData);
+                }
+                
+                selectedDriveFile = null; // Clear after processing
+                rawTextInput.value = "";
+            } catch (e) {
+                alert("Error procesando Drive: " + e.message);
+            }
+        }
+
+        // 1. Process Manual Entry (if text blocks exist and NO images AND NO Drive active)
+        const hasImages = currentFiles.some(f => f.type.startsWith('image/'));
+        
+        if (rawText && !hasImages && !selectedDriveFile) {
             parsedOverrides.forEach(ov => {
                 addTableRow({
                     id: ov.id || "TEXTO",
@@ -347,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     destinatario: ov.destinatario || "MANUAL", 
                     domDestino: ov.domDestino || "VER TEXTO", 
                     locDestino: ov.locDestino || "TUCUMAN", 
-                    cpDestino: ov.cpDestino || "",
+                    cpDestino: ov.cpDestino || getCP(ov.locDestino || "TUCUMAN"),
                     telefono: ov.telefono || "1111", 
                     valorDeclarado: ov.valorDeclarado || "0"
                 });
@@ -355,7 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
             rawTextInput.value = "";
         }
 
-        // 2. Process Files with Text Overrides
+        // 2. Process Files with Text Overrides (only images use Gemini)
         for (const file of currentFiles) {
             if (file.type.startsWith('image/')) {
                 try {
@@ -377,18 +538,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         destinatario: ov.destinatario || res.destinatario.toUpperCase(),
                         domDestino: ov.domDestino || res.domicilio_destino.toUpperCase(),
                         locDestino: ov.locDestino || res.localidad_destino.toUpperCase(),
-                        cpDestino: ov.cpDestino || "", 
-                        telefono: ov.telefono || res.telefono || "1111",
+                        cpDestino: ov.cpDestino || getCP(ov.locDestino || res.localidad_destino), 
+                        telefono: ov.telefono || cleanPhone(res.telefono) || "1111",
                         valorDeclarado: ov.valorDeclarado || "0"
                     });
-                    
-                    // Final intelligent check: if Locality has changed but CP hasn't, update CP
-                    const lastRow = tableBody.lastElementChild;
-                    const lastCells = lastRow.querySelectorAll('td');
-                    if (lastCells[10] && lastCells[11].textContent === "-" || lastCells[11].textContent === "") {
-                        const autoCP = getCP(lastCells[10].textContent);
-                        if (autoCP) lastCells[11].textContent = autoCP;
-                    }
                 } catch (e) {
                     addTableRow({ id: "ERROR", fecha: dateStr, driver, cliente: clientName, domOrigen: clientData.dom, locOrigen: clientData.loc, cpOrigen: clientData.cp, destinatario: "ERROR API", domDestino: "", locDestino: "", cpDestino: "", telefono: "1111", valorDeclarado: "0" });
                 }

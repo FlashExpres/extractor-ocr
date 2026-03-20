@@ -77,11 +77,15 @@
                             <h3>Imágenes / Excel</h3>
                             <input type="file" id="file-input" multiple accept="image/*, .xlsx, .xls" class="hidden">
                             <button class="secondary-btn btn-sm" onclick="document.getElementById('file-input').click()">Explorar</button>
+                            <button class="secondary-btn btn-sm" id="drive-btn" style="background-color: var(--secondary);"><i class="fa-brands fa-google-drive"></i> Cargar desde Drive</button>
                         </div>
                         <div class="upload-preview" id="upload-preview" style="display: none;">
                             <!-- Previews will appear here -->
                         </div>
                     </div>
+                    <!-- Google API Scripts -->
+                    <script src="https://apis.google.com/js/api.js"></script>
+                    <script src="https://accounts.google.com/gsi/client"></script>
                     <div class="text-zone">
                         <textarea id="raw-text-input" placeholder="O pega el texto del pedido aquí..."></textarea>
                     </div>
