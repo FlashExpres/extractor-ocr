@@ -457,15 +457,20 @@ document.addEventListener('DOMContentLoaded', () => {
         // Support common formats and the specific delivery format
         const cleanID = (id) => id.replace(/^#/i, '').trim().toUpperCase();
 
-        // Split by keywords ONLY if they start a line or follow a newline, avoiding splitting "Número de pedido:"
-        const textBlocks = rawText.split(/\n(?=Número de pedido:|ID:|PEDIDO:)/i)
-            .filter(b => b.trim().length > 0 && !b.trim().toUpperCase().startsWith("FILAS:"))
+        // Robust block splitting: split only at the start of a line that begins with a keyword
+        const textBlocks = rawText.split(/\r?\n(?=Número de pedido:|ID:|PEDIDO:)/i)
+            .filter(b => {
+                const trimmed = b.trim();
+                return trimmed.length > 0 && 
+                       !trimmed.toUpperCase().startsWith("FILAS:") &&
+                       (trimmed.toLowerCase().includes("pedido") || trimmed.toLowerCase().includes("id:"));
+            })
             .map(b => b.trim());
 
         const parsedOverrides = textBlocks.map(block => {
             const overrides = {};
             const keywords = {
-                id: [/\bid[:\s]+([A-Z0-9#]+)/i, /\b(?<!Número de )pedido[:\s]+([A-Z0-9#]+)/i, /Número de pedido: ([A-Z0-9#]+)/i],
+                id: [/Número de pedido: ([A-Z0-9#]+)/i, /\bID[:\s]+([A-Z0-9#]+)/i, /\bPEDIDO[:\s]+([A-Z0-9#]+)/i],
                 destinatario: [/\bdestinatario[:\s]+([^,\n(\[]+)/i, /\bnombre[:\s]+([^,\n(\[]+)/i, /Datos del cliente: ([^,\n(\[]+)/i],
                 domDestino: [/domicilio destino[:\s]+([^\n]+)/i, /domicilio[:\s]+([^\n]+)/i, /direccion[:\s]+([^\n]+)/i, /Dirección de entrega: ([^\n]+)/i],
                 locDestino: [/localidad destino[:\s]+([^\n\r]+)/i, /localidad[:\s]+([^\n\r]+)/i, /ciudad[:\s]+([^\n\r]+)/i],
@@ -511,8 +516,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!overrides.id) {
                 let remaining = block;
                 usedText.forEach(t => remaining = remaining.replace(t, ''));
-                // Filter out common system words like "NUMERO", "DATOS", etc.
-                const idMatch = remaining.match(/\b(?!(?:NUMERO|DATOS|CLIENTE|ENTREGA|DIRECCION|LOCALIDAD|DESTINATARIO|TELEFONO|PEDIDO))([A-Z0-9]{3,})\b/i);
+                // Filter out common system words like "NUMERO", "DATOS", "MERO", etc.
+                const idMatch = remaining.match(/\b(?!NUMERO|DATOS|CLIENTE|ENTREGA|DIRECCION|LOCALIDAD|DESTINATARIO|TELEFONO|PEDIDO|MERO|MERO\sDE)([A-Z0-9]{3,})\b/i);
                 if (idMatch) overrides.id = cleanID(idMatch[1].toUpperCase());
             }
             
